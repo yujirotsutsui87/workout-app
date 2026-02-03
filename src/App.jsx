@@ -1,57 +1,128 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { 
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend 
+} from 'recharts';
+import { 
+  Dumbbell, 
+  History, 
+  TrendingUp, 
+  Calendar as CalendarIcon, 
+  Plus, 
+  ChevronLeft, 
+  ChevronRight, 
+  Trash2,
+  Save,
+  AlertTriangle,
+  X,
+  Clock,
+  Cloud,
+  CloudOff,
+  Loader2,
+  Download,
+  Upload,
+  FileText,
+  CheckCircle2,
+  AlertCircle,
+  User,
+  Info
+} from 'lucide-react';
+
+// --- Firebase インポート ---
 import { initializeApp } from 'firebase/app';
 import { 
   getAuth, 
-  onAuthStateChanged, 
   signInAnonymously, 
-  signInWithCustomToken 
+  onAuthStateChanged,
+  signInWithCustomToken
 } from 'firebase/auth';
 import { 
-  getFirestore,
+  getFirestore, 
   collection, 
   addDoc, 
+  deleteDoc, 
+  doc, 
   onSnapshot, 
   query, 
-  orderBy, 
+  orderBy,
   serverTimestamp,
-  deleteDoc,
-  doc 
+  setDoc
 } from 'firebase/firestore';
 
-// --- Firebase Initialization ---
-// The environment provides these variables for the preview to work.
-const firebaseConfig = typeof __firebase_config !== 'undefined' 
-  ? JSON.parse(__firebase_config) 
-  : {
-      apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-      authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-      projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-      storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-      messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-      appId: import.meta.env.VITE_FIREBASE_APP_ID
-    };
+// --- Firebase 設定の安全な初期化 ---
+// Canvas環境のグローバル変数 __firebase_config を優先し、
+// Vite環境の import.meta.env はエラーにならないよう保護して読み込みます。
+const getInitialConfig = () => {
+  if (typeof __firebase_config !== 'undefined') {
+    return JSON.parse(__firebase_config);
+  }
+  
+  // ローカルの .env ファイルからの読み込みを試みる
+  const config = {};
+  try {
+    // コンパイルエラーを避けるため、動的なアクセスを試みるか
+    // または、グローバルオブジェクト経由でのアクセスを想定します。
+    // Vite環境では以下が有効になります。
+    const metaEnv = (import.meta && import.meta.env) ? import.meta.env : {};
+    config.apiKey = metaEnv.VITE_FIREBASE_API_KEY;
+    config.authDomain = metaEnv.VITE_FIREBASE_AUTH_DOMAIN;
+    config.projectId = metaEnv.VITE_FIREBASE_PROJECT_ID;
+    config.storageBucket = metaEnv.VITE_FIREBASE_STORAGE_BUCKET;
+    config.messagingSenderId = metaEnv.VITE_FIREBASE_MESSAGING_SENDER_ID;
+    config.appId = metaEnv.VITE_FIREBASE_APP_ID;
+  } catch (e) {
+    // プレビュー環境などで import.meta が使えない場合は無視
+  }
+  return config;
+};
 
+const firebaseConfig = getInitialConfig();
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'workout-app';
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'workout-app-pro';
 
-// Simple SVG Icon for the UI
-const DumbbellIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2">
-    <path d="m6.5 6.5 11 11"/><path d="m11.8 5.8 5.2 5.2"/><path d="m5.8 11.8 5.2 5.2"/><path d="M16 4.5a3.9 3.9 0 0 1 3.5 3.5L21 10l-1.1 1.1-2.4-2.4L16.4 7.6 14 5.2l1.1-1.1L16 4.5Z"/><path d="M8 19.5a3.9 3.9 0 0 1-3.5-3.5L3 14l1.1-1.1 2.4 2.4L7.6 16.4 10 18.8l-1.1 1.1-0.9-0.4Z"/>
-  </svg>
-);
+// --- ヘルパー関数 ---
+const calculate1RM = (w, r) => {
+  if (!w || !r) return 0;
+  return Math.round(w * (1 + r / 30) * 10) / 10;
+};
 
-export default function App() {
+const formatDate = (date) => {
+  if (!date) return '';
+  const d = new Date(date);
+  return d.toLocaleDateString('ja-JP', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  });
+};
+
+const getTodayString = () => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = (d.getMonth() + 1).toString().padStart(2, '0');
+  const day = d.getDate().toString().padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const App = () => {
+  // --- 状態管理 ---
   const [user, setUser] = useState(null);
-  const [workouts, setWorkouts] = useState([]);
-  const [menu, setMenu] = useState('');
-  const [weight, setWeight] = useState('');
-  const [reps, setReps] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
+  const [logs, setLogs] = useState([]);
+  const [exercises, setExercises] = useState(["ベンチプレス", "スクワット", "デッドリフト", "ショルダープレス"]);
+  const [isLoadingData, setIsLoadingData] = useState(false);
+  const [activeTab, setActiveTab] = useState('record');
+  const [recordDate, setRecordDate] = useState(getTodayString());
+  const [selectedExercise, setSelectedExercise] = useState("ベンチプレス");
+  const [weight, setWeight] = useState("");
+  const [reps, setReps] = useState("");
+  const [newExerciseName, setNewExerciseName] = useState("");
+  const [showAddExercise, setShowAddExercise] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
-  // 1. Handle Authentication (Rule 3: Auth before queries)
+  // 1. 認証 (ルール3: 認証を最優先)
   useEffect(() => {
     const initAuth = async () => {
       try {
@@ -61,159 +132,379 @@ export default function App() {
           await signInAnonymously(auth);
         }
       } catch (error) {
-        console.error("Auth error:", error);
+        console.error("認証エラー:", error);
       }
     };
     initAuth();
 
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
-      setLoading(false);
+      setIsAuthLoading(false);
     });
     return () => unsubscribe();
   }, []);
 
-  // 2. Real-time Data Sync (Rule 1: Use specific path structure)
+  // 2. データの同期 (ルール1: artifactsパス構造を使用)
   useEffect(() => {
     if (!user) return;
+    setIsLoadingData(true);
 
-    // Path: /artifacts/{appId}/public/data/workouts
-    const q = query(
-      collection(db, 'artifacts', appId, 'public', 'data', 'workouts'),
-      orderBy('createdAt', 'desc')
-    );
+    // ログの取得
+    const logsRef = collection(db, 'artifacts', appId, 'users', user.uid, 'logs');
+    const qLogs = query(logsRef, orderBy('date', 'desc'));
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({
+    const unsubscribeLogs = onSnapshot(qLogs, (snapshot) => {
+      const fetchedLogs = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }));
-      setWorkouts(data);
+      setLogs(fetchedLogs);
+      setIsLoadingData(false);
     }, (error) => {
-      console.error("Firestore error:", error);
+      console.error("Firestore同期エラー:", error);
+      setIsLoadingData(false);
     });
 
-    return () => unsubscribe();
+    // 設定（種目リスト）の取得
+    const settingsRef = collection(db, 'artifacts', appId, 'users', user.uid, 'settings');
+    const unsubscribeSettings = onSnapshot(settingsRef, (snapshot) => {
+      const configDoc = snapshot.docs.find(d => d.id === 'config');
+      if (configDoc && configDoc.data().customExercises) {
+        setExercises(prev => Array.from(new Set([...prev, ...configDoc.data().customExercises])));
+      }
+    });
+
+    return () => {
+      unsubscribeLogs();
+      unsubscribeSettings();
+    };
   }, [user]);
 
-  // 3. Submit Workout
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!menu || !weight || !reps || !user) return;
+  // --- アクション ---
+
+  const handleSaveLog = async () => {
+    if (!weight || !reps || !user) return;
+    const targetDate = new Date(recordDate);
+    const now = new Date();
+    targetDate.setHours(now.getHours(), now.getMinutes());
 
     try {
-      await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'workouts'), {
-        menu,
-        weight: Number(weight),
-        reps: Number(reps),
-        userId: user.uid,
+      await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'logs'), {
+        date: targetDate.toISOString(),
+        exercise: selectedExercise,
+        weight: parseFloat(weight),
+        reps: parseInt(reps),
+        oneRM: calculate1RM(parseFloat(weight), parseInt(reps)),
         createdAt: serverTimestamp()
       });
-      setMenu('');
-      setWeight('');
-      setReps('');
-    } catch (error) {
-      console.error("Save error:", error);
+      setWeight("");
+      setReps("");
+      setActiveTab('history');
+    } catch (e) {
+      console.error("保存エラー:", e);
     }
   };
 
-  // 4. Delete Workout
-  const deleteWorkout = async (id) => {
-    if (!user) return;
+  const confirmDelete = async () => {
+    if (!deleteTarget || !user) return;
     try {
-      await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'workouts', id));
-    } catch (error) {
-      console.error("Delete error:", error);
+      await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'logs', deleteTarget.id));
+    } catch (e) {
+      console.error("削除エラー:", e);
+    }
+    setShowDeleteModal(false);
+  };
+
+  const handleAddExercise = async () => {
+    if (newExerciseName && !exercises.includes(newExerciseName) && user) {
+      const newCustom = [...exercises.filter(ex => !INITIAL_EXERCISES.includes(ex)), newExerciseName];
+      try {
+        const configRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'config');
+        await setDoc(configRef, { customExercises: newCustom }, { merge: true });
+        setSelectedExercise(newExerciseName);
+        setNewExerciseName("");
+        setShowAddExercise(false);
+      } catch (e) {
+        console.error("種目追加エラー:", e);
+      }
     }
   };
 
-  if (loading) {
+  // グラフ用データ
+  const chartData = useMemo(() => {
+    return logs
+      .filter(log => log.exercise === selectedExercise)
+      .sort((a, b) => new Date(a.date) - new Date(b.date))
+      .map(log => ({
+        date: formatDate(log.date).split('/').slice(1).join('/'),
+        oneRM: log.oneRM
+      }));
+  }, [logs, selectedExercise]);
+
+  if (isAuthLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
-        <div className="animate-spin h-8 w-8 border-4 border-blue-500 rounded-full border-t-transparent"></div>
+      <div className="flex h-screen items-center justify-center bg-gray-50">
+        <Loader2 className="animate-spin text-blue-500" size={48} />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 p-4 sm:p-8">
-      <div className="max-w-md mx-auto">
-        <header className="bg-white rounded-2xl p-6 shadow-sm mb-6 flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-gray-800 flex items-center">
-            <DumbbellIcon /> 筋トレログ
-          </h1>
-          <span className="text-xs text-gray-400">UID: {user?.uid.slice(0, 8)}...</span>
-        </header>
-
-        <form onSubmit={handleSubmit} className="bg-white rounded-2xl p-6 shadow-sm mb-8">
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">メニュー名</label>
-              <input
-                type="text"
-                value={menu}
-                onChange={(e) => setMenu(e.target.value)}
-                placeholder="ベンチプレス"
-                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">重量 (kg)</label>
-                <input
-                  type="number"
-                  value={weight}
-                  onChange={(e) => setWeight(e.target.value)}
-                  placeholder="60"
-                  className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">回数 (reps)</label>
-                <input
-                  type="number"
-                  value={reps}
-                  onChange={(e) => setReps(e.target.value)}
-                  placeholder="10"
-                  className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
-                />
-              </div>
-            </div>
-            <button
-              type="submit"
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-blue-200 transition-all transform active:scale-95"
-            >
-              記録する
-            </button>
-          </div>
-        </form>
-
-        <div className="space-y-4">
-          <h2 className="text-lg font-bold text-gray-700 px-2">最近のトレーニング</h2>
-          {workouts.length === 0 ? (
-            <div className="text-center py-10 text-gray-400 bg-white rounded-2xl border border-dashed border-gray-300">
-              まだ記録がありません
-            </div>
-          ) : (
-            workouts.map((workout) => (
-              <div key={workout.id} className="bg-white p-4 rounded-2xl shadow-sm flex items-center justify-between group">
-                <div>
-                  <h3 className="font-bold text-gray-800">{workout.menu}</h3>
-                  <p className="text-sm text-gray-500">
-                    {workout.weight}kg × {workout.reps}回
-                  </p>
-                </div>
-                <button 
-                  onClick={() => deleteWorkout(workout.id)}
-                  className="text-gray-300 hover:text-red-500 p-2 transition-colors"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
-                </button>
-              </div>
-            ))
-          )}
+    <div className="max-w-md mx-auto min-h-screen bg-gray-50 pb-24 font-sans text-gray-900">
+      <header className="p-6 flex justify-between items-center sticky top-0 bg-gray-50/80 backdrop-blur-md z-10">
+        <h1 className="text-2xl font-black tracking-tighter text-blue-600">TRAINLOG PRO</h1>
+        <div className="text-[10px] font-bold bg-white px-2 py-1 rounded-full shadow-sm border text-gray-400">
+          ID: {user?.uid.slice(0, 8)}...
         </div>
-      </div>
+      </header>
+
+      <main className="px-4 space-y-6">
+        {/* 記録タブ */}
+        {activeTab === 'record' && (
+          <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 space-y-4 animate-in fade-in duration-300">
+            <h2 className="text-lg font-bold flex items-center gap-2 text-gray-800">
+              <Dumbbell className="text-blue-500" size={20} /> トレーニングを記録
+            </h2>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs text-gray-400 font-bold mb-1 block">日付</label>
+                <input 
+                  type="date" 
+                  value={recordDate} 
+                  onChange={e => setRecordDate(e.target.value)} 
+                  className="w-full p-3 bg-gray-50 rounded-xl outline-none font-bold border-none focus:ring-2 focus:ring-blue-500 transition-all" 
+                />
+              </div>
+
+              <div>
+                <label className="text-xs text-gray-400 font-bold mb-1 block">種目</label>
+                <div className="flex gap-2">
+                  <select 
+                    value={selectedExercise} 
+                    onChange={e => setSelectedExercise(e.target.value)} 
+                    className="flex-1 p-3 bg-gray-50 rounded-xl outline-none font-bold border-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    {exercises.map(ex => <option key={ex} value={ex}>{ex}</option>)}
+                  </select>
+                  <button 
+                    onClick={() => setShowAddExercise(!showAddExercise)}
+                    className="p-3 bg-gray-100 rounded-xl text-gray-600 active:scale-95 transition-transform"
+                  >
+                    {showAddExercise ? <X size={20} /> : <Plus size={20} />}
+                  </button>
+                </div>
+              </div>
+
+              {showAddExercise && (
+                <div className="flex gap-2 animate-in slide-in-from-top-2 duration-200">
+                  <input 
+                    type="text" 
+                    placeholder="新しい種目名" 
+                    value={newExerciseName} 
+                    onChange={e => setNewExerciseName(e.target.value)} 
+                    className="flex-1 p-3 bg-blue-50 border border-blue-100 rounded-xl outline-none font-bold" 
+                  />
+                  <button 
+                    onClick={handleAddExercise} 
+                    className="px-4 bg-blue-500 text-white rounded-xl font-bold active:scale-95 transition-transform"
+                  >
+                    追加
+                  </button>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs text-gray-400 font-bold mb-1 block">重量 (kg)</label>
+                  <input 
+                    type="number" 
+                    placeholder="0" 
+                    value={weight} 
+                    onChange={e => setWeight(e.target.value)} 
+                    className="w-full p-4 bg-gray-50 rounded-xl text-center text-xl font-bold outline-none border-none focus:ring-2 focus:ring-blue-500" 
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 font-bold mb-1 block">回数 (reps)</label>
+                  <input 
+                    type="number" 
+                    placeholder="0" 
+                    value={reps} 
+                    onChange={e => setReps(e.target.value)} 
+                    className="w-full p-4 bg-gray-50 rounded-xl text-center text-xl font-bold outline-none border-none focus:ring-2 focus:ring-blue-500" 
+                  />
+                </div>
+              </div>
+
+              <div className="bg-blue-50 p-4 rounded-2xl flex justify-between items-center border border-blue-100">
+                <span className="text-blue-600 text-sm font-bold">推定 1RM</span>
+                <span className="text-blue-600 font-black text-xl">{calculate1RM(weight, reps)} kg</span>
+              </div>
+
+              <button 
+                onClick={handleSaveLog} 
+                disabled={!weight || !reps}
+                className={`w-full py-4 rounded-2xl font-black text-lg shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 ${
+                  !weight || !reps ? 'bg-gray-200 text-gray-400' : 'bg-blue-600 text-white shadow-blue-200'
+                }`}
+              >
+                <Save size={20} /> 保存する
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* 履歴タブ */}
+        {activeTab === 'history' && (
+          <div className="space-y-3 animate-in fade-in duration-300">
+            <h2 className="text-xl font-black px-2 flex items-center gap-2">
+              <History className="text-blue-500" size={20} /> トレーニング履歴
+            </h2>
+            {logs.length === 0 ? (
+              <div className="text-center py-20 text-gray-300 bg-white rounded-3xl border border-dashed border-gray-200 font-bold">
+                まだ記録がありません
+              </div>
+            ) : (
+              logs.map(log => (
+                <div key={log.id} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-50 flex justify-between items-center group">
+                  <div>
+                    <div className="font-black text-gray-800">{log.exercise}</div>
+                    <div className="text-xs text-gray-400 font-bold mt-0.5">
+                      {formatDate(log.date)} • {log.weight}kg × {log.reps}回
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <div className="text-[10px] text-gray-400 font-bold leading-none">1RM</div>
+                      <div className="text-blue-600 font-black leading-none mt-1">{log.oneRM}kg</div>
+                    </div>
+                    <button 
+                      onClick={() => {setDeleteTarget(log); setShowDeleteModal(true)}} 
+                      className="p-2 text-gray-200 hover:text-red-500 transition-colors"
+                    >
+                      <Trash2 size={18}/>
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+
+        {/* 分析タブ */}
+        {activeTab === 'analytics' && (
+          <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 animate-in fade-in duration-300">
+            <h2 className="text-lg font-black mb-4 flex items-center gap-2">
+              <TrendingUp className="text-green-500" size={20} /> パフォーマンス分析
+            </h2>
+            <select 
+              value={selectedExercise} 
+              onChange={e => setSelectedExercise(e.target.value)} 
+              className="w-full p-3 mb-6 bg-gray-50 rounded-xl outline-none font-bold border-none"
+            >
+              {exercises.map(ex => <option key={ex} value={ex}>{ex}</option>)}
+            </select>
+            
+            <div className="h-56 w-full">
+              {chartData.length < 2 ? (
+                <div className="h-full flex flex-col items-center justify-center text-gray-400 text-sm font-bold border-2 border-dashed border-gray-100 rounded-2xl">
+                  <p>グラフを表示するには</p>
+                  <p>あと {2 - chartData.length} 件以上の記録が必要です</p>
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                    <XAxis dataKey="date" hide />
+                    <YAxis hide domain={['dataMin - 5', 'dataMax + 5']} />
+                    <Tooltip 
+                      contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', fontWeight: 'bold' }}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="oneRM" 
+                      stroke="#3b82f6" 
+                      strokeWidth={4} 
+                      dot={{ r: 4, fill: '#3b82f6', stroke: '#fff', strokeWidth: 2 }} 
+                      activeDot={{ r: 6 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+            
+            <div className="mt-6 grid grid-cols-2 gap-4">
+              <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100">
+                <div className="text-[10px] text-blue-400 font-bold uppercase">ベスト 1RM</div>
+                <div className="text-xl font-black text-blue-600">
+                  {chartData.length > 0 ? Math.max(...chartData.map(d => d.oneRM)) : 0} <span className="text-xs">kg</span>
+                </div>
+              </div>
+              <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100">
+                <div className="text-[10px] text-gray-400 font-bold uppercase">合計セット数</div>
+                <div className="text-xl font-black text-gray-800">
+                  {logs.filter(l => l.exercise === selectedExercise).length} <span className="text-xs">sets</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </main>
+
+      {/* 下部ナビゲーション */}
+      <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white/80 backdrop-blur-lg border-t border-gray-100 p-4 flex justify-around items-center rounded-t-[32px] shadow-[0_-8px_30px_rgba(0,0,0,0.05)] z-20">
+        <button 
+          onClick={() => setActiveTab('record')} 
+          className={`flex flex-col items-center gap-1 transition-all duration-300 ${activeTab === 'record' ? 'text-blue-600 scale-110' : 'text-gray-300'}`}
+        >
+          <div className={`p-1 ${activeTab === 'record' ? 'bg-blue-50 rounded-xl' : ''}`}><Plus size={24}/></div>
+          <span className="text-[10px] font-black">記録</span>
+        </button>
+        <button 
+          onClick={() => setActiveTab('history')} 
+          className={`flex flex-col items-center gap-1 transition-all duration-300 ${activeTab === 'history' ? 'text-blue-600 scale-110' : 'text-gray-300'}`}
+        >
+          <div className={`p-1 ${activeTab === 'history' ? 'bg-blue-50 rounded-xl' : ''}`}><History size={24}/></div>
+          <span className="text-[10px] font-black">履歴</span>
+        </button>
+        <button 
+          onClick={() => setActiveTab('analytics')} 
+          className={`flex flex-col items-center gap-1 transition-all duration-300 ${activeTab === 'analytics' ? 'text-blue-600 scale-110' : 'text-gray-300'}`}
+        >
+          <div className={`p-1 ${activeTab === 'analytics' ? 'bg-blue-50 rounded-xl' : ''}`}><TrendingUp size={24}/></div>
+          <span className="text-[10px] font-black">分析</span>
+        </button>
+      </nav>
+
+      {/* 削除確認モーダル */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-6 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-[32px] p-8 w-full max-w-xs text-center shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+              <AlertTriangle className="text-red-500" size={32} />
+            </div>
+            <h3 className="font-black text-xl mb-2 text-gray-800">削除しますか？</h3>
+            <p className="text-gray-400 text-sm font-bold mb-6">この操作は取り消せません。</p>
+            <div className="flex gap-3">
+              <button 
+                onClick={confirmDelete} 
+                className="flex-1 py-4 bg-red-500 text-white rounded-2xl font-black shadow-lg shadow-red-100 active:scale-95 transition-all"
+              >
+                削除
+              </button>
+              <button 
+                onClick={() => setShowDeleteModal(false)} 
+                className="flex-1 py-4 bg-gray-100 text-gray-500 rounded-2xl font-black active:scale-95 transition-all"
+              >
+                戻る
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
-}
+};
+
+export default App;
