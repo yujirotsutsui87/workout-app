@@ -321,50 +321,44 @@ const App = () => {
             </div>
           )}
 
-          {/* カレンダータブ (画像 b4d224.png のデザインを再現) */}
+          {/* カレンダータブ (画像のデザインを再現し、グリッド崩れを修正) */}
           {activeTab === 'calendar' && (
             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 py-4">
               <div className="bg-white p-7 rounded-[2.5rem] shadow-xl border border-slate-100">
                 <div className="flex justify-between items-center mb-8">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-purple-50 rounded-2xl flex items-center justify-center text-purple-500"><CalendarIcon size={20}/></div>
-                    <h2 className="text-xl font-black text-slate-800 tracking-tight">トレーニング日</h2>
+                    <CalendarIcon className="text-purple-600" size={24} />
+                    <h2 className="text-xl font-bold text-slate-800">トレーニング日</h2>
                   </div>
                   <div className="flex items-center gap-3">
-                    <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))} className="p-2 text-slate-400 hover:text-slate-800 transition-colors"><ChevronLeft size={20}/></button>
-                    <span className="text-sm font-black text-slate-800 min-w-[100px] text-center">{currentMonth.getFullYear()}年 {currentMonth.getMonth() + 1}月</span>
-                    <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))} className="p-2 text-slate-400 hover:text-slate-800 transition-colors"><ChevronRight size={20}/></button>
+                    <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))} className="p-2 bg-slate-50 hover:bg-slate-100 rounded-full transition-colors text-slate-600"><ChevronLeft size={20}/></button>
+                    <span className="text-lg font-bold text-slate-800 min-w-[120px] text-center">{currentMonth.getFullYear()}年 {currentMonth.getMonth() + 1}月</span>
+                    <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))} className="p-2 bg-slate-50 hover:bg-slate-100 rounded-full transition-colors text-slate-600"><ChevronRight size={20}/></button>
                   </div>
                 </div>
                 
                 {/* 曜日ヘッダー */}
-                <div className="grid grid-cols-7 mb-4">
-                  {['日', '月', '火', '水', '木', '金', '土'].map(d => (
-                    <div key={d} className="text-center text-[11px] font-bold text-slate-400 uppercase py-2">{d}</div>
+                <div className="grid grid-cols-7 mb-2">
+                  {['日', '月', '火', '水', '木', '金', '土'].map((d, i) => (
+                    <div key={d} className={`text-center text-xs font-bold py-2 ${i === 0 ? 'text-red-400' : i === 6 ? 'text-blue-400' : 'text-slate-400'}`}>{d}</div>
                   ))}
                 </div>
 
-                {/* 日付グリッド (1週間ごと) */}
-                <div className="grid grid-cols-7 gap-px bg-slate-50 border border-slate-50 overflow-hidden rounded-xl">
+                {/* 日付グリッド (シンプルで崩れない構成) */}
+                <div className="grid grid-cols-7">
                   {(() => {
                     const y = currentMonth.getFullYear(), m = currentMonth.getMonth();
                     const firstDay = new Date(y, m, 1).getDay();
                     const daysInMonth = new Date(y, m + 1, 0).getDate();
-                    const prevMonthDays = new Date(y, m, 0).getDate();
                     
                     const cells = [];
-                    // 前月の日付埋め
-                    for (let i = firstDay - 1; i >= 0; i--) {
-                      cells.push({ day: prevMonthDays - i, current: false });
+                    // 前月分の空白
+                    for (let i = 0; i < firstDay; i++) {
+                      cells.push({ day: null, current: false });
                     }
                     // 当月
                     for (let i = 1; i <= daysInMonth; i++) {
                       cells.push({ day: i, current: true });
-                    }
-                    // 次月で埋めて合計35か42セルにする
-                    const remaining = cells.length % 7 === 0 ? 0 : 7 - (cells.length % 7);
-                    for (let i = 1; i <= remaining; i++) {
-                      cells.push({ day: i, current: false });
                     }
 
                     return cells.map((cell, i) => {
@@ -373,12 +367,19 @@ const App = () => {
                       const isToday = cell.current && dateStr === formatDate(new Date());
                       
                       return (
-                        <div key={i} className="bg-white aspect-square flex flex-col items-center justify-center relative min-h-[50px]">
-                          <span className={`text-sm font-bold ${!cell.current ? 'text-slate-200' : isToday ? 'text-blue-500' : 'text-slate-600'}`}>
-                            {cell.day}
-                          </span>
-                          {hasTrained && (
-                            <div className="mt-1 w-1.5 h-1.5 bg-emerald-500 rounded-full shadow-[0_0_5px_rgba(16,185,129,0.5)]"></div>
+                        <div key={i} className="aspect-square flex flex-col items-center justify-center relative">
+                          {cell.day && (
+                            <>
+                              <span className={`text-sm font-bold w-8 h-8 flex items-center justify-center rounded-full transition-all 
+                                ${isToday ? 'bg-blue-600 text-white shadow-md' : 'text-slate-700'}`}>
+                                {cell.day}
+                              </span>
+                              {hasTrained && (
+                                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-1">
+                                  <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
+                                </div>
+                              )}
+                            </>
                           )}
                         </div>
                       );
@@ -387,19 +388,19 @@ const App = () => {
                 </div>
 
                 {/* 凡例 */}
-                <div className="mt-8 flex items-center gap-5 text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">
+                <div className="mt-6 flex items-center gap-6 text-xs font-bold text-slate-500 px-2">
                   <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                    <div className="w-2 h-2 rounded-full bg-green-500"></div>
                     <span>トレーニング実施日</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-blue-500 font-bold">本日</span>
+                    <span className="text-blue-600">本日</span>
                   </div>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-slate-50 p-6 rounded-[2rem] flex flex-col items-center shadow-sm border border-white">
+                <div className="bg-white p-6 rounded-[2rem] flex flex-col items-center shadow-sm border border-slate-50">
                   <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1">今月の記録</p>
                   <p className="text-3xl font-black text-slate-800">
                     {logs.filter(l => {
@@ -408,7 +409,7 @@ const App = () => {
                     }).length}
                   </p>
                 </div>
-                <div className="bg-slate-50 p-6 rounded-[2rem] flex flex-col items-center shadow-sm border border-white">
+                <div className="bg-white p-6 rounded-[2rem] flex flex-col items-center shadow-sm border border-slate-50">
                   <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1">累計日数</p>
                   <p className="text-3xl font-black text-blue-600">{trainingDays.size} <span className="text-xs">日</span></p>
                 </div>
