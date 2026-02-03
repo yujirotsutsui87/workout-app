@@ -24,7 +24,7 @@ import {
   Target
 } from 'lucide-react';
 
-// --- Firebase Imports ---
+// --- Firebase インポート ---
 import { initializeApp } from 'firebase/app';
 import { 
   getAuth, 
@@ -45,7 +45,7 @@ import {
   setDoc
 } from 'firebase/firestore';
 
-// --- Firebase Configuration ---
+// --- Firebase 設定 ---
 const getFirebaseConfig = () => {
   if (typeof __firebase_config !== 'undefined') {
     return JSON.parse(__firebase_config);
@@ -69,10 +69,10 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'workout-app-v3';
 
-// --- Constants ---
+// --- 定数 ---
 const INITIAL_EXERCISES = ["ベンチプレス", "スクワット", "デッドリフト", "ショルダープレス"];
 
-// --- Helpers ---
+// --- ヘルパー ---
 const calculate1RM = (w, r) => {
   if (!w || !r) return 0;
   return Math.round(w * (1 + r / 30) * 10) / 10;
@@ -94,7 +94,7 @@ const App = () => {
   const [activeTab, setActiveTab] = useState('record');
   const [currentMonth, setCurrentMonth] = useState(new Date());
   
-  // Form & UI States
+  // フォーム状態
   const [recordDate, setRecordDate] = useState(getTodayString());
   const [selectedExercise, setSelectedExercise] = useState(INITIAL_EXERCISES[0]);
   const [weight, setWeight] = useState("");
@@ -105,7 +105,7 @@ const App = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const fileInputRef = useRef(null);
 
-  // 1. Auth
+  // 1. 認証
   useEffect(() => {
     const initAuth = async () => {
       try {
@@ -121,7 +121,7 @@ const App = () => {
     return () => unsubscribe();
   }, []);
 
-  // 2. Data Sync
+  // 2. データ同期
   useEffect(() => {
     if (!user) return;
     const logsRef = collection(db, 'artifacts', appId, 'users', user.uid, 'logs');
@@ -140,7 +140,7 @@ const App = () => {
     return () => { unsubscribeLogs(); unsubscribeSettings(); };
   }, [user]);
 
-  // Actions
+  // アクション
   const handleSaveLog = async () => {
     if (!weight || !reps || !user) return;
     const targetDate = new Date(recordDate);
@@ -174,7 +174,7 @@ const App = () => {
     }
   };
 
-  // Derived
+  // 派生データ
   const trainingDays = useMemo(() => new Set(logs.map(l => formatDate(l.date))), [logs]);
   const chartData = useMemo(() => {
     const dailyMax = {};
@@ -191,26 +191,27 @@ const App = () => {
 
   return (
     <div className="min-h-screen bg-[#F1F5F9] flex justify-center items-start overflow-x-hidden p-0 sm:p-4">
-      <div className="w-full max-w-md bg-white min-h-screen sm:min-h-[90vh] sm:my-4 relative shadow-2xl sm:rounded-[3rem] overflow-hidden flex flex-col">
+      {/* translate-x-[20mm] で右にずらす調整 */}
+      <div className="w-full max-w-md bg-white min-h-screen sm:min-h-[90vh] sm:my-4 relative shadow-2xl sm:rounded-[3rem] overflow-hidden flex flex-col translate-x-[20mm]">
         
-        {/* Header */}
-        <header className="px-6 pt-8 pb-4 flex justify-between items-center bg-white z-30">
+        {/* ヘッダー */}
+        <header className="px-6 pt-10 pb-6 flex justify-between items-center bg-white z-30">
           <div>
             <h1 className="text-3xl font-black tracking-tighter text-slate-900 leading-none">TRAIN<span className="text-blue-600">LOG</span></h1>
-            <p className="text-[10px] font-black text-blue-600/50 mt-1 uppercase tracking-[0.2em]">Premium Edition</p>
+            <p className="text-[10px] font-black text-blue-600/50 mt-2 uppercase tracking-[0.2em]">プレミアムエディション</p>
           </div>
-          <button className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400 hover:text-blue-600 transition-all active:scale-90">
+          <button className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400 hover:text-blue-600 transition-all active:scale-90 shadow-sm border border-slate-100">
             <User size={20}/>
           </button>
         </header>
 
-        <main className="flex-1 px-6 overflow-y-auto pb-32">
-          {/* Record Tab */}
+        <main className="flex-1 px-6 overflow-y-auto pb-36">
+          {/* 記録タブ */}
           {activeTab === 'record' && (
             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 py-4">
               <div className="space-y-6">
                 <div className="space-y-2">
-                  <label className="text-[11px] font-black text-slate-400 ml-4 uppercase tracking-widest">Training Date</label>
+                  <label className="text-[11px] font-black text-slate-400 ml-4 uppercase tracking-widest">トレーニング日</label>
                   <div className="relative">
                     <CalendarIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18}/>
                     <input type="date" value={recordDate} onChange={e => setRecordDate(e.target.value)} className="w-full p-4 pl-12 bg-slate-50 rounded-3xl font-bold border-2 border-transparent focus:border-blue-500/20 focus:bg-white transition-all outline-none text-slate-700" />
@@ -218,7 +219,7 @@ const App = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-[11px] font-black text-slate-400 ml-4 uppercase tracking-widest">Exercise</label>
+                  <label className="text-[11px] font-black text-slate-400 ml-4 uppercase tracking-widest">種目</label>
                   <div className="flex gap-2">
                     <select value={selectedExercise} onChange={e => setSelectedExercise(e.target.value)} className="flex-1 p-4 bg-slate-50 rounded-3xl font-bold border-2 border-transparent focus:border-blue-500/20 focus:bg-white transition-all outline-none appearance-none text-slate-700">
                       {exercises.map(ex => <option key={ex} value={ex}>{ex}</option>)}
@@ -231,30 +232,31 @@ const App = () => {
 
                 {showAddExercise && (
                   <div className="flex gap-2 animate-in zoom-in-95 duration-300">
-                    <input type="text" placeholder="種目名を入力..." value={newExerciseName} onChange={e => setNewExerciseName(e.target.value)} className="flex-1 p-4 bg-blue-50 rounded-3xl font-bold border-2 border-blue-100 outline-none placeholder:text-blue-300 text-blue-700" />
+                    <input type="text" placeholder="新しい種目名..." value={newExerciseName} onChange={e => setNewExerciseName(e.target.value)} className="flex-1 p-4 bg-blue-50 rounded-3xl font-bold border-2 border-blue-100 outline-none placeholder:text-blue-300 text-blue-700" />
                     <button onClick={handleAddExercise} className="px-6 bg-blue-600 text-white rounded-3xl font-black shadow-lg shadow-blue-200 active:scale-95 transition-all">追加</button>
                   </div>
                 )}
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-slate-50 p-5 rounded-[2.5rem] border-2 border-transparent focus-within:border-blue-500/20 focus-within:bg-white transition-all text-center">
-                    <label className="text-[10px] font-black text-slate-400 uppercase mb-2 block tracking-widest">Weight (kg)</label>
+                    <label className="text-[10px] font-black text-slate-400 uppercase mb-2 block tracking-widest">重量 (kg)</label>
                     <input type="number" placeholder="0" value={weight} onChange={e => setWeight(e.target.value)} className="w-full bg-transparent text-center text-4xl font-black outline-none text-slate-800" />
                   </div>
                   <div className="bg-slate-50 p-5 rounded-[2.5rem] border-2 border-transparent focus-within:border-blue-500/20 focus-within:bg-white transition-all text-center">
-                    <label className="text-[10px] font-black text-slate-400 uppercase mb-2 block tracking-widest">Reps</label>
+                    <label className="text-[10px] font-black text-slate-400 uppercase mb-2 block tracking-widest">回数 (reps)</label>
                     <input type="number" placeholder="0" value={reps} onChange={e => setReps(e.target.value)} className="w-full bg-transparent text-center text-4xl font-black outline-none text-slate-800" />
                   </div>
                 </div>
 
-                <div className="bg-gradient-to-br from-slate-900 to-slate-800 p-8 rounded-[3rem] text-white shadow-2xl relative overflow-hidden group">
+                {/* 最大筋力カード (謎のダンベルを削除し、クリーンなデザインに) */}
+                <div className="bg-gradient-to-br from-slate-900 to-slate-800 p-8 rounded-[3rem] text-white shadow-2xl relative overflow-hidden">
                   <div className="relative z-10">
-                    <p className="text-[11px] font-black opacity-50 uppercase tracking-[0.3em] mb-2">Maximum Strength</p>
+                    <p className="text-[11px] font-black opacity-50 uppercase tracking-[0.3em] mb-2">最大筋力</p>
                     <div className="flex items-baseline gap-2">
                       <span className="text-5xl font-black tabular-nums">{calculate1RM(weight, reps)}</span>
                       <span className="text-xl font-bold opacity-70">kg</span>
                     </div>
-                    <p className="text-[10px] font-bold opacity-30 mt-2 uppercase">Estimated 1RM (Epley Formula)</p>
+                    <p className="text-[10px] font-bold opacity-30 mt-3 uppercase">推定1RM (Epley式)</p>
                   </div>
                   <button 
                     onClick={handleSaveLog} 
@@ -263,20 +265,17 @@ const App = () => {
                   >
                     <Save size={28}/>
                   </button>
-                  <Dumbbell className="absolute -left-4 -bottom-4 text-white/5 rotate-12" size={120}/>
                 </div>
               </div>
             </div>
           )}
 
-          {/* History Tab */}
+          {/* 履歴タブ */}
           {activeTab === 'history' && (
             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 py-4">
               <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-black text-slate-900">Training History</h2>
-                <div className="flex gap-2">
-                  <button className="p-3 bg-slate-50 rounded-2xl text-slate-400 hover:text-blue-600"><Download size={18}/></button>
-                </div>
+                <h2 className="text-2xl font-black text-slate-900 italic tracking-tighter">履歴</h2>
+                <button className="p-3 bg-slate-50 rounded-2xl text-slate-400 hover:text-blue-600"><Download size={18}/></button>
               </div>
               
               {logs.length === 0 ? (
@@ -284,7 +283,7 @@ const App = () => {
                   <div className="w-20 h-20 bg-slate-50 rounded-[2.5rem] flex items-center justify-center mx-auto mb-6 text-slate-200">
                     <History size={32}/>
                   </div>
-                  <p className="text-slate-300 font-black uppercase tracking-widest text-xs">No entries found</p>
+                  <p className="text-slate-300 font-black uppercase tracking-widest text-[10px]">記録が見つかりません</p>
                 </div>
               ) : (
                 Object.entries(logs.reduce((acc, l) => {
@@ -305,7 +304,7 @@ const App = () => {
                             <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center font-black text-blue-600 shadow-sm">{l.weight}</div>
                             <div>
                               <p className="font-black text-slate-800 leading-tight">{l.exercise}</p>
-                              <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">{l.reps} Reps • 1RM {l.oneRM}kg</p>
+                              <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">{l.reps}回 • 1RM {l.oneRM}kg</p>
                             </div>
                           </div>
                           <button onClick={() => {setDeleteTarget(l); setShowDeleteModal(true)}} className="p-3 text-slate-200 hover:text-red-500 transition-all opacity-0 group-hover:opacity-100 active:scale-90">
@@ -320,11 +319,11 @@ const App = () => {
             </div>
           )}
 
-          {/* Calendar Tab */}
+          {/* カレンダータブ (デザイン大幅改善) */}
           {activeTab === 'calendar' && (
             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 py-4">
-              <div className="bg-slate-900 p-8 rounded-[3rem] text-white shadow-2xl">
-                <div className="flex justify-between items-center mb-8">
+              <div className="bg-slate-900 p-8 rounded-[3rem] text-white shadow-2xl relative overflow-hidden">
+                <div className="flex justify-between items-center mb-8 relative z-10">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-white/10 rounded-2xl flex items-center justify-center"><CalendarIcon size={20}/></div>
                     <h2 className="text-xl font-black">{currentMonth.getFullYear()}年 {currentMonth.getMonth() + 1}月</h2>
@@ -335,9 +334,9 @@ const App = () => {
                   </div>
                 </div>
                 
-                <div className="grid grid-cols-7 gap-y-4 text-center">
-                  {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(d => (
-                    <div key={d} className="text-[10px] font-black text-white/30 uppercase tracking-widest">{d}</div>
+                <div className="grid grid-cols-7 gap-y-2 text-center relative z-10">
+                  {['日', '月', '火', '水', '木', '金', '土'].map(d => (
+                    <div key={d} className="text-[10px] font-black text-white/30 uppercase tracking-widest mb-2">{d}</div>
                   ))}
                   {(() => {
                     const y = currentMonth.getFullYear(), m = currentMonth.getMonth();
@@ -351,7 +350,7 @@ const App = () => {
                         <div key={i} className="flex flex-col items-center justify-center h-12 relative">
                           {day && (
                             <>
-                              <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-sm font-black transition-all ${isToday ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30' : 'text-white hover:bg-white/5'}`}>
+                              <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm font-black transition-all ${isToday ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/50' : 'text-white hover:bg-white/5'}`}>
                                 {day}
                               </div>
                               {hasTrained && <div className="absolute bottom-1 w-1.5 h-1.5 bg-blue-400 rounded-full shadow-[0_0_8px_#3b82f6]"></div>}
@@ -365,8 +364,8 @@ const App = () => {
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-white p-6 rounded-[2.5rem] border-2 border-slate-50 flex flex-col items-center">
-                  <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-2">Monthly Logs</p>
+                <div className="bg-white p-6 rounded-[2.5rem] border-2 border-slate-50 flex flex-col items-center shadow-sm">
+                  <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-2">今月の記録数</p>
                   <p className="text-3xl font-black text-slate-800">
                     {logs.filter(l => {
                       const d = new Date(l.date);
@@ -374,20 +373,20 @@ const App = () => {
                     }).length}
                   </p>
                 </div>
-                <div className="bg-white p-6 rounded-[2.5rem] border-2 border-slate-50 flex flex-col items-center">
-                  <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-2">Total Trained</p>
-                  <p className="text-3xl font-black text-blue-600">{trainingDays.size} <span className="text-xs">days</span></p>
+                <div className="bg-white p-6 rounded-[2.5rem] border-2 border-slate-50 flex flex-col items-center shadow-sm">
+                  <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-2">累計実施日数</p>
+                  <p className="text-3xl font-black text-blue-600">{trainingDays.size} <span className="text-xs">日</span></p>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Stats Tab */}
+          {/* 進捗タブ */}
           {activeTab === 'stats' && (
             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 py-4">
               <div className="bg-slate-50 p-8 rounded-[3rem] border-2 border-white shadow-sm">
                 <div className="flex justify-between items-center mb-8">
-                  <h2 className="text-xl font-black text-slate-800">Progress</h2>
+                  <h2 className="text-xl font-black text-slate-800">進捗</h2>
                   <select value={selectedExercise} onChange={e => setSelectedExercise(e.target.value)} className="bg-white border-none p-2 px-4 rounded-xl font-black text-[10px] uppercase tracking-wider shadow-sm outline-none">
                     {exercises.map(ex => <option key={ex} value={ex}>{ex}</option>)}
                   </select>
@@ -397,7 +396,7 @@ const App = () => {
                   {chartData.length < 2 ? (
                     <div className="h-full bg-white/50 rounded-[2rem] border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-300">
                       <TrendingUp size={32} className="mb-2 opacity-20"/>
-                      <p className="text-[10px] font-black uppercase tracking-[0.2em]">Add more data</p>
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em]">データ不足</p>
                     </div>
                   ) : (
                     <ResponsiveContainer width="100%" height="100%">
@@ -420,12 +419,12 @@ const App = () => {
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-blue-600 p-6 rounded-[2.5rem] text-white">
-                  <p className="text-[10px] font-black opacity-50 uppercase tracking-widest mb-1">Personal Best</p>
+                <div className="bg-blue-600 p-6 rounded-[2.5rem] text-white shadow-xl shadow-blue-600/20">
+                  <p className="text-[10px] font-black opacity-50 uppercase tracking-widest mb-1">自己ベスト</p>
                   <p className="text-3xl font-black">{chartData.length > 0 ? Math.max(...chartData.map(d => d.oneRM)) : 0} <span className="text-xs font-bold opacity-60 italic">kg</span></p>
                 </div>
                 <div className="bg-white p-6 rounded-[2.5rem] border-2 border-slate-50 shadow-sm">
-                  <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1">Total Logs</p>
+                  <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1">合計ログ数</p>
                   <p className="text-3xl font-black text-slate-800">{logs.filter(l => l.exercise === selectedExercise).length}</p>
                 </div>
               </div>
@@ -433,26 +432,26 @@ const App = () => {
           )}
         </main>
 
-        {/* Footer Navigation */}
-        <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white/90 backdrop-blur-2xl border-t border-slate-100 px-6 pt-4 pb-8 flex justify-around items-end rounded-t-[3.5rem] shadow-[0_-20px_50px_rgba(0,0,0,0.08)] z-40">
-          <NavBtn active={activeTab === 'record'} icon={<Plus size={26}/>} label="ADD" onClick={() => setActiveTab('record')} />
-          <NavBtn active={activeTab === 'history'} icon={<History size={26}/>} label="LOGS" onClick={() => setActiveTab('history')} />
-          <NavBtn active={activeTab === 'calendar'} icon={<CalendarIcon size={26}/>} label="CAL" onClick={() => setActiveTab('calendar')} />
-          <NavBtn active={activeTab === 'stats'} icon={<TrendingUp size={26}/>} label="PB" onClick={() => setActiveTab('stats')} />
+        {/* ナビゲーション */}
+        <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white/90 backdrop-blur-2xl border-t border-slate-100 px-6 pt-4 pb-10 flex justify-around items-end rounded-t-[3.5rem] shadow-[0_-20px_50px_rgba(0,0,0,0.08)] z-40">
+          <NavBtn active={activeTab === 'record'} icon={<Plus size={26}/>} label="追加" onClick={() => setActiveTab('record')} />
+          <NavBtn active={activeTab === 'history'} icon={<History size={26}/>} label="履歴" onClick={() => setActiveTab('history')} />
+          <NavBtn active={activeTab === 'calendar'} icon={<CalendarIcon size={26}/>} label="カレンダー" onClick={() => setActiveTab('calendar')} />
+          <NavBtn active={activeTab === 'stats'} icon={<TrendingUp size={26}/>} label="進捗" onClick={() => setActiveTab('stats')} />
         </nav>
 
-        {/* Delete Confirmation */}
+        {/* 削除確認モーダル */}
         {showDeleteModal && (
           <div className="fixed inset-0 bg-slate-900/60 z-[60] flex items-center justify-center p-8 backdrop-blur-md animate-in fade-in duration-300">
             <div className="bg-white rounded-[3rem] p-10 w-full max-w-xs text-center shadow-2xl animate-in zoom-in-95 duration-300">
               <div className="w-20 h-20 bg-red-50 rounded-[2rem] flex items-center justify-center mx-auto mb-6 text-red-500">
                 <Trash2 size={36}/>
               </div>
-              <h3 className="text-2xl font-black text-slate-800 mb-2 leading-tight">記録を削除しますか？</h3>
-              <p className="text-xs font-bold text-slate-400 mb-8 uppercase tracking-widest">Permanent removal</p>
+              <h3 className="text-2xl font-black text-slate-800 mb-2 leading-tight">削除しますか？</h3>
+              <p className="text-xs font-bold text-slate-400 mb-8 uppercase tracking-widest">取り消しはできません</p>
               <div className="flex flex-col gap-3">
-                <button onClick={confirmDelete} className="w-full py-5 bg-red-500 text-white rounded-[1.5rem] font-black shadow-xl shadow-red-200 active:scale-95 transition-all uppercase tracking-widest">Delete</button>
-                <button onClick={() => setShowDeleteModal(false)} className="w-full py-5 bg-slate-100 text-slate-400 rounded-[1.5rem] font-black active:scale-95 transition-all uppercase tracking-widest">Cancel</button>
+                <button onClick={confirmDelete} className="w-full py-5 bg-red-500 text-white rounded-[1.5rem] font-black shadow-xl shadow-red-200 active:scale-95 transition-all">削除する</button>
+                <button onClick={() => setShowDeleteModal(false)} className="w-full py-5 bg-slate-100 text-slate-400 rounded-[1.5rem] font-black active:scale-95 transition-all">キャンセル</button>
               </div>
             </div>
           </div>
@@ -464,10 +463,10 @@ const App = () => {
 
 const NavBtn = ({ active, icon, label, onClick }) => (
   <button onClick={onClick} className={`flex flex-col items-center gap-2 transition-all duration-300 group relative ${active ? 'text-blue-600' : 'text-slate-300'}`}>
-    <div className={`p-3 transition-all duration-500 rounded-3xl ${active ? 'bg-blue-50 -translate-y-4 shadow-xl shadow-blue-100' : 'hover:bg-slate-50'}`}>
+    <div className={`p-3 transition-all duration-500 rounded-[1.5rem] ${active ? 'bg-blue-50 -translate-y-4 shadow-xl shadow-blue-100' : 'hover:bg-slate-50'}`}>
       {icon}
     </div>
-    <span className={`text-[9px] font-black tracking-[0.2em] transition-all absolute -bottom-1 ${active ? 'opacity-100' : 'opacity-0'}`}>
+    <span className={`text-[10px] font-black tracking-tighter transition-all absolute -bottom-1 ${active ? 'opacity-100' : 'opacity-0'}`}>
       {label}
     </span>
   </button>
