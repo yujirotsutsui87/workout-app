@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { auth, db } from './firebase'; // 作成した firebase.js をインポート
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area
 } from 'recharts';
@@ -24,16 +25,13 @@ import {
   Target
 } from 'lucide-react';
 
-// --- Firebase インポート ---
-import { initializeApp } from 'firebase/app';
+// --- Firebase Auth & Firestore Functions ---
 import { 
-  getAuth, 
   signInAnonymously, 
   onAuthStateChanged,
   signInWithCustomToken
 } from 'firebase/auth';
 import { 
-  getFirestore, 
   collection, 
   addDoc, 
   deleteDoc, 
@@ -45,32 +43,9 @@ import {
   setDoc
 } from 'firebase/firestore';
 
-// --- Firebase 設定 ---
-const getFirebaseConfig = () => {
-  if (typeof __firebase_config !== 'undefined') {
-    return JSON.parse(__firebase_config);
-  }
-  const config = {};
-  try {
-    const metaEnv = (import.meta && import.meta.env) ? import.meta.env : {};
-    config.apiKey = metaEnv.VITE_FIREBASE_API_KEY;
-    config.authDomain = metaEnv.VITE_FIREBASE_AUTH_DOMAIN;
-    config.projectId = metaEnv.VITE_FIREBASE_PROJECT_ID;
-    config.storageBucket = metaEnv.VITE_FIREBASE_STORAGE_BUCKET;
-    config.messagingSenderId = metaEnv.VITE_FIREBASE_MESSAGING_SENDER_ID;
-    config.appId = metaEnv.VITE_FIREBASE_APP_ID;
-  } catch (e) {}
-  return config;
-};
-
-const firebaseConfig = getFirebaseConfig();
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'workout-app-v3';
-
 // --- 定数 ---
 const INITIAL_EXERCISES = ["ベンチプレス", "スクワット", "デッドリフト", "ショルダープレス"];
+const appId = 'workout-app-v3'; // アプリID
 
 // --- ヘルパー ---
 const calculate1RM = (w, r) => {
@@ -109,11 +84,7 @@ const App = () => {
   useEffect(() => {
     const initAuth = async () => {
       try {
-        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-          await signInWithCustomToken(auth, __initial_auth_token);
-        } else {
-          await signInAnonymously(auth);
-        }
+        await signInAnonymously(auth);
       } catch (error) { console.error(error); }
     };
     initAuth();
@@ -172,6 +143,21 @@ const App = () => {
       await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'logs', deleteTarget.id));
       setShowDeleteModal(false); setDeleteTarget(null);
     }
+  };
+
+  // CSVエクスポート
+  const handleExportCSV = () => {
+    if (logs.length === 0) return;
+    const headers = ["日付", "種目", "重量(kg)", "回数", "推定1RM(kg)"];
+    const csvContent = [
+      headers.join(","),
+      ...logs.map(log => [formatDate(log.date), log.exercise, log.weight, log.reps, log.oneRM].join(","))
+    ].join("\n");
+    const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `workout_logs_${getTodayString()}.csv`;
+    link.click();
   };
 
   // 派生データ
@@ -277,7 +263,7 @@ const App = () => {
             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 py-4">
               <div className="flex justify-between items-center">
                 <h2 className="text-2xl font-black text-slate-900">履歴</h2>
-                <button onClick={() => handleExportCSV()} className="p-3 bg-slate-50 rounded-2xl text-slate-400 hover:text-blue-600 shadow-sm border"><Download size={18}/></button>
+                <button onClick={handleExportCSV} className="p-3 bg-slate-50 rounded-2xl text-slate-400 hover:text-blue-600 shadow-sm border"><Download size={18}/></button>
               </div>
               
               {logs.length === 0 ? (
