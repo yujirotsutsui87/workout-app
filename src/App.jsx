@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { auth, db } from './firebase'; // 作成した firebase.js をインポート
+import { auth, db } from './firebase'; // 作成済みのfirebase.jsから読み込み
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area
 } from 'recharts';
@@ -25,7 +25,7 @@ import {
   Target
 } from 'lucide-react';
 
-// --- Firebase Auth & Firestore Functions ---
+// --- Firebase Imports ---
 import { 
   signInAnonymously, 
   onAuthStateChanged,
@@ -43,11 +43,11 @@ import {
   setDoc
 } from 'firebase/firestore';
 
-// --- 定数 ---
+// --- アプリ設定 ---
+const appId = 'workout-app-v3';
 const INITIAL_EXERCISES = ["ベンチプレス", "スクワット", "デッドリフト", "ショルダープレス"];
-const appId = 'workout-app-v3'; // アプリID
 
-// --- ヘルパー ---
+// --- ヘルパー関数 ---
 const calculate1RM = (w, r) => {
   if (!w || !r) return 0;
   return Math.round(w * (1 + r / 30) * 10) / 10;
@@ -59,7 +59,13 @@ const formatDate = (date) => {
   return d.toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' });
 };
 
-const getTodayString = () => new Date().toISOString().split('T')[0];
+const getTodayString = () => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = (d.getMonth() + 1).toString().padStart(2, '0');
+  const day = d.getDate().toString().padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 const App = () => {
   const [user, setUser] = useState(null);
@@ -307,7 +313,7 @@ const App = () => {
             </div>
           )}
 
-          {/* カレンダータブ (画像のデザインを再現し、グリッド崩れを修正) */}
+          {/* カレンダータブ (完全な週グリッド形式) */}
           {activeTab === 'calendar' && (
             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 py-4">
               <div className="bg-white p-7 rounded-[2.5rem] shadow-xl border border-slate-100">
@@ -324,36 +330,36 @@ const App = () => {
                 </div>
                 
                 {/* 曜日ヘッダー */}
-                <div className="grid grid-cols-7 mb-2">
+                <div className="grid grid-cols-7 mb-2 w-full">
                   {['日', '月', '火', '水', '木', '金', '土'].map((d, i) => (
                     <div key={d} className={`text-center text-xs font-bold py-2 ${i === 0 ? 'text-red-400' : i === 6 ? 'text-blue-400' : 'text-slate-400'}`}>{d}</div>
                   ))}
                 </div>
 
-                {/* 日付グリッド (シンプルで崩れない構成) */}
-                <div className="grid grid-cols-7">
+                {/* 日付グリッド (w-full追加で幅を確保) */}
+                <div className="grid grid-cols-7 w-full">
                   {(() => {
                     const y = currentMonth.getFullYear(), m = currentMonth.getMonth();
-                    const firstDay = new Date(y, m, 1).getDay();
-                    const daysInMonth = new Date(y, m + 1, 0).getDate();
+                    const firstDay = new Date(y, m, 1).getDay(); // 1日の曜日 (0-6)
+                    const daysInMonth = new Date(y, m + 1, 0).getDate(); // 月の日数
                     
                     const cells = [];
-                    // 前月分の空白
+                    // 1日より前の空白セル
                     for (let i = 0; i < firstDay; i++) {
-                      cells.push({ day: null, current: false });
+                      cells.push({ day: null });
                     }
-                    // 当月
+                    // 当月の日付セル
                     for (let i = 1; i <= daysInMonth; i++) {
-                      cells.push({ day: i, current: true });
+                      cells.push({ day: i });
                     }
 
                     return cells.map((cell, i) => {
-                      const dateStr = cell.current ? formatDate(new Date(y, m, cell.day)) : null;
+                      const dateStr = cell.day ? formatDate(new Date(y, m, cell.day)) : null;
                       const hasTrained = dateStr && trainingDays.has(dateStr);
-                      const isToday = cell.current && dateStr === formatDate(new Date());
+                      const isToday = cell.day && dateStr === formatDate(new Date());
                       
                       return (
-                        <div key={i} className="aspect-square flex flex-col items-center justify-center relative">
+                        <div key={i} className="aspect-square flex flex-col items-center justify-center relative w-full">
                           {cell.day && (
                             <>
                               <span className={`text-sm font-bold w-8 h-8 flex items-center justify-center rounded-full transition-all 
@@ -361,7 +367,7 @@ const App = () => {
                                 {cell.day}
                               </span>
                               {hasTrained && (
-                                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-1">
+                                <div className="absolute bottom-1 left-1/2 -translate-x-1/2 flex items-center gap-1">
                                   <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
                                 </div>
                               )}
