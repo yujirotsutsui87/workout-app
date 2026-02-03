@@ -174,7 +174,7 @@ const App = () => {
     }
   };
 
-  // 派生
+  // 派生データ
   const trainingDays = useMemo(() => new Set(logs.map(l => formatDate(l.date))), [logs]);
   const chartData = useMemo(() => {
     const dailyMax = {};
@@ -190,8 +190,8 @@ const App = () => {
   if (isAuthLoading) return <div className="flex h-screen items-center justify-center bg-white"><Loader2 className="animate-spin text-blue-600" size={48} /></div>;
 
   return (
-    <div className="min-h-screen bg-[#F1F5F9] flex justify-center items-start overflow-x-hidden p-0 sm:p-4">
-      {/* 20mm右にずらすためのインラインスタイルを追加 */}
+    <div className="min-h-screen bg-[#F8FAFC] flex justify-center items-start overflow-x-hidden p-0 sm:p-4">
+      {/* 20mm右にずらす調整 */}
       <div 
         className="w-full max-w-md bg-white min-h-screen sm:min-h-[90vh] sm:my-4 relative shadow-2xl sm:rounded-[3rem] overflow-hidden flex flex-col"
         style={{ transform: 'translateX(20mm)' }}
@@ -200,7 +200,7 @@ const App = () => {
         {/* ヘッダー */}
         <header className="px-6 pt-10 pb-6 flex justify-between items-center bg-white z-30">
           <div>
-            <h1 className="text-3xl font-black tracking-tighter text-slate-900 leading-none">TRAIN<span className="text-blue-600">LOG</span></h1>
+            <h1 className="text-3xl font-black tracking-tighter text-slate-900 leading-none uppercase">TRAIN<span className="text-blue-600">LOG</span></h1>
             <p className="text-[10px] font-black text-blue-600/50 mt-2 uppercase tracking-[0.2em]">プレミアムエディション</p>
           </div>
           <button className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400 hover:text-blue-600 transition-all active:scale-90 shadow-sm border border-slate-100">
@@ -208,7 +208,7 @@ const App = () => {
           </button>
         </header>
 
-        <main className="flex-1 px-6 overflow-y-auto pb-36">
+        <main className="flex-1 px-6 overflow-y-auto pb-40">
           {/* 記録タブ */}
           {activeTab === 'record' && (
             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 py-4">
@@ -277,9 +277,7 @@ const App = () => {
             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 py-4">
               <div className="flex justify-between items-center">
                 <h2 className="text-2xl font-black text-slate-900">履歴</h2>
-                <div className="flex gap-2">
-                  <button className="p-3 bg-slate-50 rounded-2xl text-slate-400 hover:text-blue-600"><Download size={18}/></button>
-                </div>
+                <button onClick={() => handleExportCSV()} className="p-3 bg-slate-50 rounded-2xl text-slate-400 hover:text-blue-600 shadow-sm border"><Download size={18}/></button>
               </div>
               
               {logs.length === 0 ? (
@@ -303,9 +301,9 @@ const App = () => {
                     </h3>
                     <div className="space-y-2">
                       {items.map(l => (
-                        <div key={l.id} className="bg-slate-50 p-5 rounded-[2rem] flex justify-between items-center group hover:bg-blue-50 transition-colors">
+                        <div key={l.id} className="bg-slate-50 p-5 rounded-[2rem] flex justify-between items-center group hover:bg-blue-50 transition-colors shadow-sm">
                           <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center font-black text-blue-600 shadow-sm">{l.weight}</div>
+                            <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center font-black text-blue-600 shadow-sm border border-slate-100">{l.weight}</div>
                             <div>
                               <p className="font-black text-slate-800 leading-tight">{l.exercise}</p>
                               <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">{l.reps}回 • 1RM {l.oneRM}kg</p>
@@ -323,54 +321,86 @@ const App = () => {
             </div>
           )}
 
-          {/* カレンダータブ (グリッド形式に改善) */}
+          {/* カレンダータブ (画像 b4d224.png のデザインを再現) */}
           {activeTab === 'calendar' && (
             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 py-4">
-              <div className="bg-slate-900 p-8 rounded-[3rem] text-white shadow-2xl relative overflow-hidden">
-                <div className="flex justify-between items-center mb-8 relative z-10">
+              <div className="bg-white p-7 rounded-[2.5rem] shadow-xl border border-slate-100">
+                <div className="flex justify-between items-center mb-8">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-white/10 rounded-2xl flex items-center justify-center"><CalendarIcon size={20}/></div>
-                    <h2 className="text-xl font-black">{currentMonth.getFullYear()}年 {currentMonth.getMonth() + 1}月</h2>
+                    <div className="w-10 h-10 bg-purple-50 rounded-2xl flex items-center justify-center text-purple-500"><CalendarIcon size={20}/></div>
+                    <h2 className="text-xl font-black text-slate-800 tracking-tight">トレーニング日</h2>
                   </div>
-                  <div className="flex gap-2">
-                    <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))} className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center hover:bg-white/20 transition-all"><ChevronLeft size={20}/></button>
-                    <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))} className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center hover:bg-white/20 transition-all"><ChevronRight size={20}/></button>
+                  <div className="flex items-center gap-3">
+                    <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))} className="p-2 text-slate-400 hover:text-slate-800 transition-colors"><ChevronLeft size={20}/></button>
+                    <span className="text-sm font-black text-slate-800 min-w-[100px] text-center">{currentMonth.getFullYear()}年 {currentMonth.getMonth() + 1}月</span>
+                    <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))} className="p-2 text-slate-400 hover:text-slate-800 transition-colors"><ChevronRight size={20}/></button>
                   </div>
                 </div>
                 
-                {/* 1週間ごとのグリッドレイアウト */}
-                <div className="grid grid-cols-7 gap-y-2 text-center relative z-10">
+                {/* 曜日ヘッダー */}
+                <div className="grid grid-cols-7 mb-4">
                   {['日', '月', '火', '水', '木', '金', '土'].map(d => (
-                    <div key={d} className="text-[10px] font-black text-white/30 uppercase tracking-widest mb-4">{d}</div>
+                    <div key={d} className="text-center text-[11px] font-bold text-slate-400 uppercase py-2">{d}</div>
                   ))}
+                </div>
+
+                {/* 日付グリッド (1週間ごと) */}
+                <div className="grid grid-cols-7 gap-px bg-slate-50 border border-slate-50 overflow-hidden rounded-xl">
                   {(() => {
                     const y = currentMonth.getFullYear(), m = currentMonth.getMonth();
-                    const first = new Date(y, m, 1).getDay(); // 初日の曜日
-                    const days = new Date(y, m + 1, 0).getDate(); // 月の日数
-                    return [...Array(first).fill(null), ...Array.from({ length: days }, (_, i) => i + 1)].map((day, i) => {
-                      const dateStr = day ? formatDate(new Date(y, m, day)) : null;
+                    const firstDay = new Date(y, m, 1).getDay();
+                    const daysInMonth = new Date(y, m + 1, 0).getDate();
+                    const prevMonthDays = new Date(y, m, 0).getDate();
+                    
+                    const cells = [];
+                    // 前月の日付埋め
+                    for (let i = firstDay - 1; i >= 0; i--) {
+                      cells.push({ day: prevMonthDays - i, current: false });
+                    }
+                    // 当月
+                    for (let i = 1; i <= daysInMonth; i++) {
+                      cells.push({ day: i, current: true });
+                    }
+                    // 次月で埋めて合計35か42セルにする
+                    const remaining = cells.length % 7 === 0 ? 0 : 7 - (cells.length % 7);
+                    for (let i = 1; i <= remaining; i++) {
+                      cells.push({ day: i, current: false });
+                    }
+
+                    return cells.map((cell, i) => {
+                      const dateStr = cell.current ? formatDate(new Date(y, m, cell.day)) : null;
                       const hasTrained = dateStr && trainingDays.has(dateStr);
-                      const isToday = dateStr === formatDate(new Date());
+                      const isToday = cell.current && dateStr === formatDate(new Date());
+                      
                       return (
-                        <div key={i} className="flex flex-col items-center justify-center h-12 relative">
-                          {day && (
-                            <>
-                              <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm font-black transition-all ${isToday ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/50' : 'text-white hover:bg-white/5'}`}>
-                                {day}
-                              </div>
-                              {hasTrained && <div className="absolute bottom-1 w-1.5 h-1.5 bg-blue-400 rounded-full shadow-[0_0_8px_#3b82f6]"></div>}
-                            </>
+                        <div key={i} className="bg-white aspect-square flex flex-col items-center justify-center relative min-h-[50px]">
+                          <span className={`text-sm font-bold ${!cell.current ? 'text-slate-200' : isToday ? 'text-blue-500' : 'text-slate-600'}`}>
+                            {cell.day}
+                          </span>
+                          {hasTrained && (
+                            <div className="mt-1 w-1.5 h-1.5 bg-emerald-500 rounded-full shadow-[0_0_5px_rgba(16,185,129,0.5)]"></div>
                           )}
                         </div>
                       );
                     });
                   })()}
                 </div>
+
+                {/* 凡例 */}
+                <div className="mt-8 flex items-center gap-5 text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                    <span>トレーニング実施日</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-blue-500 font-bold">本日</span>
+                  </div>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-white p-6 rounded-[2.5rem] border-2 border-slate-50 flex flex-col items-center shadow-sm">
-                  <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-2">今月の記録数</p>
+                <div className="bg-slate-50 p-6 rounded-[2rem] flex flex-col items-center shadow-sm border border-white">
+                  <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1">今月の記録</p>
                   <p className="text-3xl font-black text-slate-800">
                     {logs.filter(l => {
                       const d = new Date(l.date);
@@ -378,8 +408,8 @@ const App = () => {
                     }).length}
                   </p>
                 </div>
-                <div className="bg-white p-6 rounded-[2.5rem] border-2 border-slate-50 flex flex-col items-center shadow-sm">
-                  <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-2">累計実施日数</p>
+                <div className="bg-slate-50 p-6 rounded-[2rem] flex flex-col items-center shadow-sm border border-white">
+                  <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1">累計日数</p>
                   <p className="text-3xl font-black text-blue-600">{trainingDays.size} <span className="text-xs">日</span></p>
                 </div>
               </div>
@@ -389,17 +419,17 @@ const App = () => {
           {/* 進捗タブ */}
           {activeTab === 'stats' && (
             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 py-4">
-              <div className="bg-slate-50 p-8 rounded-[3rem] border-2 border-white shadow-sm">
+              <div className="bg-white p-8 rounded-[2.5rem] shadow-xl border border-slate-100">
                 <div className="flex justify-between items-center mb-8">
-                  <h2 className="text-xl font-black text-slate-800">進捗</h2>
-                  <select value={selectedExercise} onChange={e => setSelectedExercise(e.target.value)} className="bg-white border-none p-2 px-4 rounded-xl font-black text-[10px] uppercase tracking-wider shadow-sm outline-none">
+                  <h2 className="text-xl font-black text-slate-800">進捗分析</h2>
+                  <select value={selectedExercise} onChange={e => setSelectedExercise(e.target.value)} className="bg-slate-50 border-none p-2 px-4 rounded-xl font-black text-[10px] uppercase tracking-wider outline-none shadow-inner">
                     {exercises.map(ex => <option key={ex} value={ex}>{ex}</option>)}
                   </select>
                 </div>
                 
                 <div className="h-56 w-full">
                   {chartData.length < 2 ? (
-                    <div className="h-full bg-white/50 rounded-[2rem] border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-300">
+                    <div className="h-full bg-slate-50 rounded-[2rem] border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-300">
                       <TrendingUp size={32} className="mb-2 opacity-20"/>
                       <p className="text-[10px] font-black uppercase tracking-[0.2em]">データ不足</p>
                     </div>
@@ -424,12 +454,12 @@ const App = () => {
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-blue-600 p-6 rounded-[2.5rem] text-white shadow-xl shadow-blue-600/20">
+                <div className="bg-blue-600 p-6 rounded-[2rem] text-white shadow-xl shadow-blue-600/20">
                   <p className="text-[10px] font-black opacity-50 uppercase tracking-widest mb-1">自己ベスト</p>
                   <p className="text-3xl font-black">{chartData.length > 0 ? Math.max(...chartData.map(d => d.oneRM)) : 0} <span className="text-xs font-bold opacity-60 italic">kg</span></p>
                 </div>
-                <div className="bg-white p-6 rounded-[2.5rem] border-2 border-slate-50 shadow-sm">
-                  <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1">合計ログ数</p>
+                <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm flex flex-col items-center">
+                  <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1">合計セット数</p>
                   <p className="text-3xl font-black text-slate-800">{logs.filter(l => l.exercise === selectedExercise).length}</p>
                 </div>
               </div>
@@ -438,7 +468,7 @@ const App = () => {
         </main>
 
         {/* ナビゲーション */}
-        <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white/90 backdrop-blur-2xl border-t border-slate-100 px-6 pt-4 pb-10 flex justify-around items-end rounded-t-[3.5rem] shadow-[0_-20px_50px_rgba(0,0,0,0.08)] z-40">
+        <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white/95 backdrop-blur-2xl border-t border-slate-100 px-6 pt-4 pb-12 flex justify-around items-end rounded-t-[3.5rem] shadow-[0_-20px_50px_rgba(0,0,0,0.06)] z-40">
           <NavBtn active={activeTab === 'record'} icon={<Plus size={26}/>} label="追加" onClick={() => setActiveTab('record')} />
           <NavBtn active={activeTab === 'history'} icon={<History size={26}/>} label="履歴" onClick={() => setActiveTab('history')} />
           <NavBtn active={activeTab === 'calendar'} icon={<CalendarIcon size={26}/>} label="カレンダー" onClick={() => setActiveTab('calendar')} />
@@ -455,8 +485,8 @@ const App = () => {
               <h3 className="text-2xl font-black text-slate-800 mb-2 leading-tight">削除しますか？</h3>
               <p className="text-xs font-bold text-slate-400 mb-8 uppercase tracking-widest">取り消しはできません</p>
               <div className="flex flex-col gap-3">
-                <button onClick={confirmDelete} className="w-full py-5 bg-red-500 text-white rounded-[1.5rem] font-black shadow-xl shadow-red-200 active:scale-95 transition-all">削除する</button>
-                <button onClick={() => setShowDeleteModal(false)} className="w-full py-5 bg-slate-100 text-slate-400 rounded-[1.5rem] font-black active:scale-95 transition-all">キャンセル</button>
+                <button onClick={confirmDelete} className="w-full py-5 bg-red-500 text-white rounded-[1.5rem] font-black shadow-xl shadow-red-200 active:scale-95 transition-all uppercase tracking-widest">削除する</button>
+                <button onClick={() => setShowDeleteModal(false)} className="w-full py-5 bg-slate-100 text-slate-400 rounded-[1.5rem] font-black active:scale-95 transition-all uppercase tracking-widest">キャンセル</button>
               </div>
             </div>
           </div>
