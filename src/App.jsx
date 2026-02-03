@@ -174,7 +174,7 @@ const App = () => {
     }
   };
 
-  // 派生データ
+  // 派生
   const trainingDays = useMemo(() => new Set(logs.map(l => formatDate(l.date))), [logs]);
   const chartData = useMemo(() => {
     const dailyMax = {};
@@ -191,8 +191,11 @@ const App = () => {
 
   return (
     <div className="min-h-screen bg-[#F1F5F9] flex justify-center items-start overflow-x-hidden p-0 sm:p-4">
-      {/* translate-x-[20mm] で右にずらす調整 */}
-      <div className="w-full max-w-md bg-white min-h-screen sm:min-h-[90vh] sm:my-4 relative shadow-2xl sm:rounded-[3rem] overflow-hidden flex flex-col translate-x-[20mm]">
+      {/* 20mm右にずらすためのインラインスタイルを追加 */}
+      <div 
+        className="w-full max-w-md bg-white min-h-screen sm:min-h-[90vh] sm:my-4 relative shadow-2xl sm:rounded-[3rem] overflow-hidden flex flex-col"
+        style={{ transform: 'translateX(20mm)' }}
+      >
         
         {/* ヘッダー */}
         <header className="px-6 pt-10 pb-6 flex justify-between items-center bg-white z-30">
@@ -232,7 +235,7 @@ const App = () => {
 
                 {showAddExercise && (
                   <div className="flex gap-2 animate-in zoom-in-95 duration-300">
-                    <input type="text" placeholder="新しい種目名..." value={newExerciseName} onChange={e => setNewExerciseName(e.target.value)} className="flex-1 p-4 bg-blue-50 rounded-3xl font-bold border-2 border-blue-100 outline-none placeholder:text-blue-300 text-blue-700" />
+                    <input type="text" placeholder="種目名を入力..." value={newExerciseName} onChange={e => setNewExerciseName(e.target.value)} className="flex-1 p-4 bg-blue-50 rounded-3xl font-bold border-2 border-blue-100 outline-none placeholder:text-blue-300 text-blue-700" />
                     <button onClick={handleAddExercise} className="px-6 bg-blue-600 text-white rounded-3xl font-black shadow-lg shadow-blue-200 active:scale-95 transition-all">追加</button>
                   </div>
                 )}
@@ -248,8 +251,7 @@ const App = () => {
                   </div>
                 </div>
 
-                {/* 最大筋力カード (謎のダンベルを削除し、クリーンなデザインに) */}
-                <div className="bg-gradient-to-br from-slate-900 to-slate-800 p-8 rounded-[3rem] text-white shadow-2xl relative overflow-hidden">
+                <div className="bg-gradient-to-br from-slate-900 to-slate-800 p-8 rounded-[3rem] text-white shadow-2xl relative overflow-hidden group">
                   <div className="relative z-10">
                     <p className="text-[11px] font-black opacity-50 uppercase tracking-[0.3em] mb-2">最大筋力</p>
                     <div className="flex items-baseline gap-2">
@@ -274,8 +276,10 @@ const App = () => {
           {activeTab === 'history' && (
             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 py-4">
               <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-black text-slate-900 italic tracking-tighter">履歴</h2>
-                <button className="p-3 bg-slate-50 rounded-2xl text-slate-400 hover:text-blue-600"><Download size={18}/></button>
+                <h2 className="text-2xl font-black text-slate-900">履歴</h2>
+                <div className="flex gap-2">
+                  <button className="p-3 bg-slate-50 rounded-2xl text-slate-400 hover:text-blue-600"><Download size={18}/></button>
+                </div>
               </div>
               
               {logs.length === 0 ? (
@@ -319,7 +323,7 @@ const App = () => {
             </div>
           )}
 
-          {/* カレンダータブ (デザイン大幅改善) */}
+          {/* カレンダータブ (グリッド形式に改善) */}
           {activeTab === 'calendar' && (
             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 py-4">
               <div className="bg-slate-900 p-8 rounded-[3rem] text-white shadow-2xl relative overflow-hidden">
@@ -334,14 +338,15 @@ const App = () => {
                   </div>
                 </div>
                 
+                {/* 1週間ごとのグリッドレイアウト */}
                 <div className="grid grid-cols-7 gap-y-2 text-center relative z-10">
                   {['日', '月', '火', '水', '木', '金', '土'].map(d => (
-                    <div key={d} className="text-[10px] font-black text-white/30 uppercase tracking-widest mb-2">{d}</div>
+                    <div key={d} className="text-[10px] font-black text-white/30 uppercase tracking-widest mb-4">{d}</div>
                   ))}
                   {(() => {
                     const y = currentMonth.getFullYear(), m = currentMonth.getMonth();
-                    const first = new Date(y, m, 1).getDay();
-                    const days = new Date(y, m + 1, 0).getDate();
+                    const first = new Date(y, m, 1).getDay(); // 初日の曜日
+                    const days = new Date(y, m + 1, 0).getDate(); // 月の日数
                     return [...Array(first).fill(null), ...Array.from({ length: days }, (_, i) => i + 1)].map((day, i) => {
                       const dateStr = day ? formatDate(new Date(y, m, day)) : null;
                       const hasTrained = dateStr && trainingDays.has(dateStr);
